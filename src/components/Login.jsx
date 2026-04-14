@@ -57,37 +57,90 @@ function Login() {
     }
     
     setIsLoading(true);
+    setErrors({});
     
-    // Simulate API call
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Replace with your actual backend API endpoint
+      const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
       
-      // Mock successful login
-      console.log("Login successful:", formData);
-      
-      // Store token in localStorage if remember me is checked
-      if (rememberMe) {
-        localStorage.setItem("userEmail", formData.email);
-        localStorage.setItem("isLoggedIn", "true");
+      const response = await fetch(`${API_URL}/api/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Store authentication data
+        const authData = {
+          token: data.token,
+          user: data.user,
+          email: formData.email
+        };
+
+        if (rememberMe) {
+          // Store in localStorage (persists across browser sessions)
+          localStorage.setItem("authToken", data.token);
+          localStorage.setItem("userData", JSON.stringify(data.user));
+          localStorage.setItem("userEmail", formData.email);
+          localStorage.setItem("isLoggedIn", "true");
+        } else {
+          // Store in sessionStorage (cleared when browser is closed)
+          sessionStorage.setItem("authToken", data.token);
+          sessionStorage.setItem("userData", JSON.stringify(data.user));
+          sessionStorage.setItem("userEmail", formData.email);
+          sessionStorage.setItem("isLoggedIn", "true");
+        }
+
+        // Optional: Set a global auth state (if using context/redux)
+        // You can dispatch an action here to update global auth state
+        
+        // Redirect to dashboard or the page user was trying to access
+        const redirectTo = sessionStorage.getItem("redirectAfterLogin") || "/dashboard";
+        sessionStorage.removeItem("redirectAfterLogin");
+        navigate(redirectTo);
       } else {
-        sessionStorage.setItem("userEmail", formData.email);
-        sessionStorage.setItem("isLoggedIn", "true");
+        // Handle specific error messages from backend
+        setErrors({
+          general: data.message || "Invalid email or password. Please try again."
+        });
       }
-      
-      // Redirect to dashboard or home page
-      navigate("/dashboard");
     } catch (error) {
+      console.error("Login error:", error);
       setErrors({
-        general: "Invalid email or password. Please try again."
+        general: "Network error. Please check your connection and try again."
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSocialLogin = (provider) => {
-    console.log(`Login with ${provider}`);
-    // Implement social login logic here
+  const handleSocialLogin = async (provider) => {
+    setIsLoading(true);
+    try {
+      // For social login, you can redirect to backend OAuth endpoint
+      const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+      
+      // Option 1: Redirect to backend OAuth
+      window.location.href = `${API_URL}/api/auth/${provider}`;
+      
+      // Option 2: If using popup method
+      // const popup = window.open(`${API_URL}/api/auth/${provider}`, "oauthPopup", "width=600,height=600");
+      // You would need to handle the callback with postMessage
+      
+    } catch (error) {
+      console.error(`${provider} login error:`, error);
+      setErrors({
+        general: `Failed to login with ${provider}. Please try again.`
+      });
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -113,7 +166,10 @@ function Login() {
             <div className="px-8 py-6">
               {/* General Error Message */}
               {errors.general && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm flex items-start">
+                  <svg className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
                   {errors.general}
                 </div>
               )}
@@ -137,6 +193,7 @@ function Login() {
                       onChange={handleChange}
                       className={`w-full pl-10 pr-3 py-2 border ${errors.email ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition`}
                       placeholder="you@example.com"
+                      autoComplete="email"
                     />
                   </div>
                   {errors.email && (
@@ -162,6 +219,7 @@ function Login() {
                       onChange={handleChange}
                       className={`w-full pl-10 pr-10 py-2 border ${errors.password ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition`}
                       placeholder="Enter your password"
+                      autoComplete="current-password"
                     />
                     <button
                       type="button"
@@ -187,12 +245,12 @@ function Login() {
 
                 {/* Remember Me & Forgot Password */}
                 <div className="flex items-center justify-between mb-6">
-                  <label className="flex items-center">
+                  <label className="flex items-center cursor-pointer">
                     <input
                       type="checkbox"
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
                     />
                     <span className="ml-2 text-sm text-gray-600">Remember me</span>
                   </label>

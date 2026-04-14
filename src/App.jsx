@@ -7,6 +7,14 @@ import Login from "./components/Login";
 import Signup from "./components/Signup";
 import ForgotPassword from "./components/ForgotPassword";
 import Dashboard from "./components/Dashboard";
+import Explore from "./components/Explore";
+import ReadArticles from './components/ReadArticles';
+import BuyerDashboard from "./components/BuyerDashboard";
+import RenterDashboard from "./components/RenterDashboard";
+import SellerDashboard from "./components/SellerDashboard";
+
+
+
 
 function App() {
   return (
@@ -24,6 +32,11 @@ function App() {
 <Route path="/signup" element={<Signup />} />
 <Route path="/forgot-password" element={<ForgotPassword />} />
 <Route path="/dashboard" element={<Dashboard />} />
+<Route path="/explore" element={<Explore />}/>
+<Route path="/featured/rental-automation" element={<ReadArticles />} />
+   <Route path="/buyer-dashboard" element={<BuyerDashboard />} />
+        <Route path="/seller-dashboard" element={<SellerDashboard />} />
+        <Route path="/renter-dashboard" element={<RenterDashboard />} />
       </Routes>
     </BrowserRouter>
   );
