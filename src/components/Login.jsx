@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -13,6 +13,14 @@ function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+
+  // Check if already logged in
+  useEffect(() => {
+    const isLoggedIn = localStorage.getItem("isLoggedIn") || sessionStorage.getItem("isLoggedIn");
+    if (isLoggedIn === "true") {
+      navigate("/dashboard");
+    }
+  }, [navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -40,8 +48,6 @@ function Login() {
     
     if (!formData.password) {
       newErrors.password = "Password is required";
-    } else if (formData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
     }
     
     return newErrors;
@@ -59,62 +65,77 @@ function Login() {
     setIsLoading(true);
     setErrors({});
     
+    // Simulate network delay for realism
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
     try {
-      // Replace with your actual backend API endpoint
-      const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+      // Get user data from localStorage (where SignUp saved it)
+      const storedUserData = localStorage.getItem("userData");
+      const storedEmail = localStorage.getItem("userEmail");
+      const isLoggedIn = localStorage.getItem("isLoggedIn");
       
-      const response = await fetch(`${API_URL}/api/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        // Store authentication data
+      // For demo purposes, also check if there's any registered user
+      // In a real app, you'd have multiple users in a database
+      let user = null;
+      let userPassword = null;
+      
+      if (storedUserData && storedEmail === formData.email) {
+        user = JSON.parse(storedUserData);
+        // Note: In a real app, you'd never store plain text passwords!
+        // This is just for demo. Always hash passwords in production.
+        userPassword = user.password;
+      }
+      
+      // Check if credentials match
+      if (user && userPassword === formData.password) {
+        // Login successful - store auth data
         const authData = {
-          token: data.token,
-          user: data.user,
+          token: `demo-token-${Date.now()}`,
+          user: user,
           email: formData.email
         };
 
         if (rememberMe) {
           // Store in localStorage (persists across browser sessions)
-          localStorage.setItem("authToken", data.token);
-          localStorage.setItem("userData", JSON.stringify(data.user));
+          localStorage.setItem("authToken", authData.token);
+          localStorage.setItem("userData", JSON.stringify(user));
           localStorage.setItem("userEmail", formData.email);
           localStorage.setItem("isLoggedIn", "true");
+          // Store roles if they exist
+          if (user.selectedRoles) {
+            localStorage.setItem("userRoles", JSON.stringify(user.selectedRoles));
+          }
         } else {
           // Store in sessionStorage (cleared when browser is closed)
-          sessionStorage.setItem("authToken", data.token);
-          sessionStorage.setItem("userData", JSON.stringify(data.user));
+          sessionStorage.setItem("authToken", authData.token);
+          sessionStorage.setItem("userData", JSON.stringify(user));
           sessionStorage.setItem("userEmail", formData.email);
           sessionStorage.setItem("isLoggedIn", "true");
+          if (user.selectedRoles) {
+            sessionStorage.setItem("userRoles", JSON.stringify(user.selectedRoles));
+          }
         }
-
-        // Optional: Set a global auth state (if using context/redux)
-        // You can dispatch an action here to update global auth state
         
-        // Redirect to dashboard or the page user was trying to access
+        // Redirect to dashboard
         const redirectTo = sessionStorage.getItem("redirectAfterLogin") || "/dashboard";
         sessionStorage.removeItem("redirectAfterLogin");
         navigate(redirectTo);
       } else {
-        // Handle specific error messages from backend
-        setErrors({
-          general: data.message || "Invalid email or password. Please try again."
-        });
+        // Check if user exists but password is wrong
+        if (storedEmail === formData.email && storedUserData) {
+          setErrors({
+            general: "Incorrect password. Please try again."
+          });
+        } else {
+          setErrors({
+            general: "No account found with this email. Please sign up first."
+          });
+        }
       }
     } catch (error) {
       console.error("Login error:", error);
       setErrors({
-        general: "Network error. Please check your connection and try again."
+        general: "Login failed. Please try again."
       });
     } finally {
       setIsLoading(false);
@@ -122,29 +143,26 @@ function Login() {
   };
 
   const handleSocialLogin = async (provider) => {
-    setIsLoading(true);
-    try {
-      // For social login, you can redirect to backend OAuth endpoint
-      const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-      
-      // Option 1: Redirect to backend OAuth
-      window.location.href = `${API_URL}/api/auth/${provider}`;
-      
-      // Option 2: If using popup method
-      // const popup = window.open(`${API_URL}/api/auth/${provider}`, "oauthPopup", "width=600,height=600");
-      // You would need to handle the callback with postMessage
-      
-    } catch (error) {
-      console.error(`${provider} login error:`, error);
-      setErrors({
-        general: `Failed to login with ${provider}. Please try again.`
+    // For demo purposes, show that social login would redirect
+    alert(`Social login with ${provider} would be implemented here.\nFor demo, please use email/password login.`);
+  };
+
+  // Demo credentials helper
+  const fillDemoCredentials = () => {
+    // Try to get the last registered user
+    const storedEmail = localStorage.getItem("userEmail");
+    if (storedEmail) {
+      setFormData({
+        email: storedEmail,
+        password: "" // User needs to enter their password
       });
-      setIsLoading(false);
+    } else {
+      alert("No registered users found. Please sign up first.");
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-green-50 to-emerald-100">
       <Navbar />
 
       <div className="flex-grow flex items-center justify-center px-4 py-12">
@@ -152,14 +170,14 @@ function Login() {
           {/* Login Card */}
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6 text-center">
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-8 py-6 text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4">
                 <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                 </svg>
               </div>
               <h2 className="text-2xl font-bold text-white">Welcome Back</h2>
-              <p className="text-blue-100 mt-2">Sign in to your account</p>
+              <p className="text-green-100 mt-2">Sign in to your account</p>
             </div>
 
             {/* Form Body */}
@@ -171,6 +189,16 @@ function Login() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   {errors.general}
+                </div>
+              )}
+
+              {/* Success Message for new signups */}
+              {new URLSearchParams(window.location.search).get('registered') === 'true' && (
+                <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm flex items-start">
+                  <svg className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Account created successfully! Please sign in.
                 </div>
               )}
 
@@ -191,7 +219,7 @@ function Login() {
                       name="email"
                       value={formData.email}
                       onChange={handleChange}
-                      className={`w-full pl-10 pr-3 py-2 border ${errors.email ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition`}
+                      className={`w-full pl-10 pr-3 py-2 border ${errors.email ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition`}
                       placeholder="you@example.com"
                       autoComplete="email"
                     />
@@ -217,7 +245,7 @@ function Login() {
                       name="password"
                       value={formData.password}
                       onChange={handleChange}
-                      className={`w-full pl-10 pr-10 py-2 border ${errors.password ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition`}
+                      className={`w-full pl-10 pr-10 py-2 border ${errors.password ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition`}
                       placeholder="Enter your password"
                       autoComplete="current-password"
                     />
@@ -250,11 +278,11 @@ function Login() {
                       type="checkbox"
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+                      className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded cursor-pointer"
                     />
                     <span className="ml-2 text-sm text-gray-600">Remember me</span>
                   </label>
-                  <Link to="/forgot-password" className="text-sm text-blue-600 hover:text-blue-700 hover:underline">
+                  <Link to="/forgot-password" className="text-sm text-green-600 hover:text-green-700 hover:underline">
                     Forgot password?
                   </Link>
                 </div>
@@ -263,7 +291,7 @@ function Login() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-2 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all transform hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all transform hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
                   {isLoading ? (
                     <div className="flex items-center justify-center">
@@ -277,6 +305,17 @@ function Login() {
                     "Sign In"
                   )}
                 </button>
+
+                {/* Demo Account Helper */}
+                <div className="mt-4 text-center">
+                  <button
+                    type="button"
+                    onClick={fillDemoCredentials}
+                    className="text-sm text-green-600 hover:text-green-700 underline"
+                  >
+                    Use last registered email
+                  </button>
+                </div>
 
                 {/* Divider */}
                 <div className="relative my-6">
@@ -326,7 +365,7 @@ function Login() {
                 <div className="mt-6 text-center">
                   <p className="text-sm text-gray-600">
                     Don't have an account?{" "}
-                    <Link to="/signup" className="text-blue-600 hover:text-blue-700 font-semibold hover:underline">
+                    <Link to="/signup" className="text-green-600 hover:text-green-700 font-semibold hover:underline">
                       Sign up
                     </Link>
                   </p>
@@ -339,9 +378,9 @@ function Login() {
           <div className="mt-6 text-center text-sm text-gray-600">
             <p>By signing in, you agree to our</p>
             <p>
-              <Link to="/terms" className="text-blue-600 hover:underline">Terms of Service</Link>
+              <Link to="/terms" className="text-green-600 hover:underline">Terms of Service</Link>
               {" "}and{" "}
-              <Link to="/privacy" className="text-blue-600 hover:underline">Privacy Policy</Link>
+              <Link to="/privacy" className="text-green-600 hover:underline">Privacy Policy</Link>
             </p>
           </div>
         </div>

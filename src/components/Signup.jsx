@@ -28,6 +28,7 @@ function SignUp() {
   const [sentCode, setSentCode] = useState("");
   const [resendTimer, setResendTimer] = useState(0);
   const [isResending, setIsResending] = useState(false);
+  const [showRolesHelp, setShowRolesHelp] = useState(false);
 
   // Specific data for each account type
   const [buyerData, setBuyerData] = useState({
@@ -105,12 +106,16 @@ function SignUp() {
       ...prev,
       [role]: !prev[role]
     }));
+    // Clear role error when user selects something
+    if (errors.role) {
+      setErrors({});
+    }
   };
 
   const handleContinueToForm = () => {
     const hasSelectedRole = Object.values(selectedRoles).some(value => value === true);
     if (!hasSelectedRole) {
-      setErrors({ role: "Please select at least one role" });
+      setErrors({ role: "Please select at least one role (you can select multiple!)" });
       return;
     }
     setErrors({});
@@ -162,17 +167,12 @@ function SignUp() {
   const sendVerificationCode = async () => {
     setIsLoading(true);
     try {
-      // Generate a random 6-digit code
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       setSentCode(code);
       
-      // In a real app, you would send this via email/SMS
       console.log(`Verification code for ${formData.email}: ${code}`);
-      
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Show success message (you can add a toast notification here)
       alert(`Demo: Verification code sent to ${formData.email}\nCode: ${code}`);
       
     } catch (error) {
@@ -191,7 +191,7 @@ function SignUp() {
       setSentCode(code);
       console.log(`New verification code: ${code}`);
       alert(`New verification code sent: ${code}`);
-      setResendTimer(60); // 60 seconds cooldown
+      setResendTimer(60);
     } catch (error) {
       setErrors({ general: "Failed to resend code. Please try again." });
     } finally {
@@ -225,7 +225,7 @@ function SignUp() {
     try {
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Combine all data - user can perform all selected roles
+      // Create a single user account with multiple roles
       const completeUserData = {
         id: Date.now().toString(),
         ...formData,
@@ -256,45 +256,17 @@ function SignUp() {
       localStorage.setItem("isLoggedIn", "true");
       localStorage.setItem("userRoles", JSON.stringify(selectedRoles));
       
-      // Get the selected roles as an array for the message
       const selectedRolesList = Object.keys(selectedRoles).filter(role => selectedRoles[role]);
       const rolesText = selectedRolesList.join(", ");
       
-      // Redirect based on first selected role or to dashboard
-      if (selectedRolesList.length === 1) {
-        const role = selectedRolesList[0];
-        if (role === 'buyer') {
-          navigate("/buyer-dashboard", { 
-            state: { 
-              message: `Welcome ${formData.fullName}! Start your home search journey! 🏠`,
-              userData: userData
-            } 
-          });
-        } else if (role === 'seller') {
-          navigate("/seller-dashboard", { 
-            state: { 
-              message: `Welcome ${formData.fullName}! List your property today! 📈`,
-              userData: userData
-            } 
-          });
-        } else {
-          navigate("/renter-dashboard", { 
-            state: { 
-              message: `Welcome ${formData.fullName}! Find your perfect rental! 🔑`,
-              userData: userData
-            } 
-          });
-        }
-      } else {
-        // Redirect to a unified dashboard if user has multiple roles
-        navigate("/dashboard", { 
-          state: { 
-            message: `Welcome ${formData.fullName}! You can now ${rolesText} on HomeLink! 🏠`,
-            selectedRoles: selectedRoles,
-            userData: userData
-          } 
-        });
-      }
+      // Always go to unified dashboard where user can access all roles
+      navigate("/dashboard", { 
+        state: { 
+          message: `Welcome ${formData.fullName}! Your single account gives you access to ${rolesText} on HomeLink! 🏠`,
+          selectedRoles: selectedRoles,
+          userData: userData
+        } 
+      });
     } catch (error) {
       setErrors({
         general: "Signup failed. Please try again."
@@ -336,13 +308,20 @@ function SignUp() {
 
   const passwordStrength = getPasswordStrength();
 
-  // Render specific content based on selected roles
   const renderSpecificContent = () => {
+    // Only show if at least one role is selected
+    if (!selectedRoles.buyer && !selectedRoles.seller && !selectedRoles.renter) {
+      return null;
+    }
+
     return (
       <div className="space-y-6 mt-6 border-t pt-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">
-          Additional Information (Optional but Recommended)
-        </h3>
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-semibold text-gray-800">
+            Additional Information (Optional)
+          </h3>
+          <span className="text-xs text-gray-500">You can skip and add this later</span>
+        </div>
         
         {/* Buyer Section */}
         {selectedRoles.buyer && (
@@ -634,10 +613,10 @@ function SignUp() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-green-50 to-emerald-100">
+    <div className="min-h-screen flex flex-col bg-linear-to-br from-green-50 to-emerald-100">
       <Navbar />
 
-      <div className="flex-grow flex items-center justify-center px-4 py-12">
+      <div className="grow flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-2xl">
           {/* Progress Steps */}
           {!showSpecificContent && (
@@ -724,20 +703,20 @@ function SignUp() {
           {/* Sign Up Card */}
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
             {/* Header */}
-            <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-8 py-6 text-center">
+            <div className="bg-linear-to-r from-green-600 to-emerald-600 px-8 py-6 text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4">
                 <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                 </svg>
               </div>
               <h2 className="text-2xl font-bold text-white">
-                {!showSpecificContent ? "Choose Your Roles" : currentStep === 1 ? "Create Your Account" : "Verify Your Email"}
+                {!showSpecificContent ? "One Account, All Access" : currentStep === 1 ? "Complete Your Profile" : "Verify Your Email"}
               </h2>
               <p className="text-green-100 mt-2">
                 {!showSpecificContent 
                   ? "Select all the ways you want to use HomeLink (you can select multiple)" 
                   : currentStep === 1 
-                    ? "Complete your account setup" 
+                    ? "Tell us a bit about yourself" 
                     : `We sent a verification code to ${formData.email}`}
               </p>
             </div>
@@ -753,6 +732,19 @@ function SignUp() {
               {/* Role Selection Screen */}
               {!showSpecificContent && (
                 <div>
+                  {/* Help tip */}
+                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div className="text-sm text-blue-800">
+                        <p className="font-medium">One account for everything!</p>
+                        <p className="text-blue-700">You can buy, sell, AND rent using the same account. Just select all that apply to you.</p>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     {/* Buyer Option */}
                     <div
@@ -771,7 +763,7 @@ function SignUp() {
                         </svg>
                       </div>
                       <h3 className="text-xl font-bold text-gray-800 mb-2">Buy a Home</h3>
-                      <p className="text-gray-600 text-sm">Find your dream home with our expert guidance</p>
+                      <p className="text-gray-600 text-sm">Find your dream home</p>
                       {selectedRoles.buyer && (
                         <div className="mt-3 text-green-600">
                           <svg className="w-6 h-6 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -798,7 +790,7 @@ function SignUp() {
                         </svg>
                       </div>
                       <h3 className="text-xl font-bold text-gray-800 mb-2">Sell a Home</h3>
-                      <p className="text-gray-600 text-sm">Get the best value for your property</p>
+                      <p className="text-gray-600 text-sm">Get the best value</p>
                       {selectedRoles.seller && (
                         <div className="mt-3 text-green-600">
                           <svg className="w-6 h-6 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -825,7 +817,7 @@ function SignUp() {
                         </svg>
                       </div>
                       <h3 className="text-xl font-bold text-gray-800 mb-2">Rent a Home</h3>
-                      <p className="text-gray-600 text-sm">Find the perfect rental property</p>
+                      <p className="text-gray-600 text-sm">Find your perfect rental</p>
                       {selectedRoles.renter && (
                         <div className="mt-3 text-green-600">
                           <svg className="w-6 h-6 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -835,6 +827,22 @@ function SignUp() {
                       )}
                     </div>
                   </div>
+
+                  {/* Selected roles summary */}
+                  {Object.values(selectedRoles).some(v => v) && (
+                    <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-sm text-green-800">
+                        <span className="font-medium">✓ You'll be able to:</span>{" "}
+                        {Object.entries(selectedRoles).map(([role, isSelected]) => 
+                          isSelected ? {
+                            buyer: "buy homes",
+                            seller: "sell properties",
+                            renter: "rent homes"
+                          }[role] : null
+                        ).filter(Boolean).join(", ")}
+                      </p>
+                    </div>
+                  )}
 
                   {errors.role && (
                     <p className="text-center text-sm text-red-600 mb-4">{errors.role}</p>
@@ -846,7 +854,7 @@ function SignUp() {
                     </Link>
                     <button
                       onClick={handleContinueToForm}
-                      className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all"
+                      className="flex-1 bg-linear-to-r from-green-600 to-emerald-600 text-white py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all"
                     >
                       Continue →
                     </button>
@@ -857,6 +865,18 @@ function SignUp() {
               {/* Account Creation Form - Step 1 */}
               {showSpecificContent && currentStep === 1 && (
                 <form onSubmit={(e) => { e.preventDefault(); handleNextStep(); }}>
+                  {/* Selected roles badge */}
+                  <div className="mb-4 p-2 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-600 text-center">
+                      Creating account for:{" "}
+                      <span className="font-semibold text-green-600">
+                        {Object.entries(selectedRoles).filter(([,v]) => v).map(([role]) => 
+                          role === 'buyer' ? 'Buying' : role === 'seller' ? 'Selling' : 'Renting'
+                        ).join(", ")}
+                      </span>
+                    </p>
+                  </div>
+
                   {/* Full Name */}
                   <div className="mb-5">
                     <label className="block text-gray-700 font-medium mb-2">
@@ -966,7 +986,7 @@ function SignUp() {
                       <div className="mt-2">
                         <div className="flex items-center gap-2 mb-1">
                           <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div className={`h-full transition-all duration-300 ${passwordStrength.bg.replace('bg-', 'bg-')}`} style={{ width: passwordStrength.width }}></div>
+                            <div className={`h-full transition-all duration-300 ${passwordStrength.bg}`} style={{ width: passwordStrength.width }}></div>
                           </div>
                           <span className={`text-xs font-medium ${passwordStrength.color}`}>
                             {passwordStrength.text}
@@ -1051,7 +1071,7 @@ function SignUp() {
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-70"
+                      className="flex-1 bg-linear-to-r from-green-600 to-emerald-600 text-white py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-70"
                     >
                       {isLoading ? (
                         <div className="flex items-center justify-center">
@@ -1078,7 +1098,7 @@ function SignUp() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                       </svg>
                     </div>
-                    <h3 className="text-xl font-bold text-gray-800 mb-2">Verify Your Account</h3>
+                    <h3 className="text-xl font-bold text-gray-800 mb-2">Verify Your Email</h3>
                     <p className="text-gray-600">
                       We've sent a verification code to <strong className="text-green-600">{formData.email}</strong>
                     </p>
@@ -1133,7 +1153,7 @@ function SignUp() {
                     <button
                       onClick={handleVerify}
                       disabled={isLoading}
-                      className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 disabled:opacity-70"
+                      className="flex-1 bg-linear-to-r from-green-600 to-emerald-600 text-white py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 disabled:opacity-70"
                     >
                       {isLoading ? (
                         <div className="flex items-center justify-center">
